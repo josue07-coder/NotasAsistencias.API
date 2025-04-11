@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.13.35919.96 d17.13
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NotasAsistencias.API", "NotasAsistencias.API\NotasAsistencias.API.csproj", "{7073FACD-9433-4386-AEFD-340BCFFA6449}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NotaAsistencia.Client", "NotaAsistencia.Client\NotaAsistencia.Client.csproj", "{347C46E4-2C52-4578-A7AC-8DB2D087D90A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7073FACD-9433-4386-AEFD-340BCFFA6449}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7073FACD-9433-4386-AEFD-340BCFFA6449}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7073FACD-9433-4386-AEFD-340BCFFA6449}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7073FACD-9433-4386-AEFD-340BCFFA6449}.Release|Any CPU.Build.0 = Release|Any CPU
+		{347C46E4-2C52-4578-A7AC-8DB2D087D90A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{347C46E4-2C52-4578-A7AC-8DB2D087D90A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{347C46E4-2C52-4578-A7AC-8DB2D087D90A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{347C46E4-2C52-4578-A7AC-8DB2D087D90A}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {E54DA5B3-38C2-41CC-A0D6-4C5EFFFC4D1C}
+	EndGlobalSection
+EndGlobal

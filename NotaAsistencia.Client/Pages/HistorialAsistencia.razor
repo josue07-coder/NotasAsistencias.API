@@ -1,0 +1,191 @@
+﻿@page "/historial-asistencia"
+@inject HttpClient Http
+@using System.Net.Http.Json
+@using NotaAsistencia.Client.Dtos
+@using NotaAsistencia.Client.Models
+
+<h3 class="text-primary text-center mb-4">Historial de Asistencias</h3>
+
+<div class="row mb-3">
+    <div class="col-md-4">
+        <label class="form-label">Filtrar:</label>
+        <select class="form-select" @onchange="FiltrarCambio">
+            <option value="fecha">Por Fecha</option>
+            <option value="todo">Todo</option>
+        </select>
+
+    </div>
+
+    @if (modoFiltro == "fecha")
+    {
+        <div class="col-md-4">
+            <label class="form-label">Seleccionar fecha:</label>
+            <InputDate class="form-control" @bind-Value="fechaSeleccionada" />
+        </div>
+        <div class="col-md-4 d-flex align-items-end">
+            <button class="btn btn-primary" @onclick="CargarAsistencias">Buscar</button>
+        </div>
+    }
+</div>
+
+@if (asistencias.Count == 0)
+{
+    <p class="text-muted">No hay asistencias registradas para los criterios seleccionados.</p>
+}
+else
+{
+    <table class="table table-bordered table-striped">
+        <thead class="table-dark">
+            <tr>
+                <th>Fecha</th>
+                <th>Estudiante</th>
+                <th>Estado</th>
+                <th>Observaciones</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in asistencias)
+            {
+                <tr>
+                    <td>@item.Fecha.ToShortDateString()</td>
+                    <td>@item.NombreCompleto</td>
+                    <td>@item.Estado</td>
+                    <td>@item.Observaciones</td>
+                    <td>
+                        <button class="btn btn-primary btn-sm" @onclick="() => EditarAsistencia(item)">Editar</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    @if (mostrandoEditor && asistenciaEditando != null)
+    {
+        <div class="card p-3 mt-4 bg-white shadow">
+            <h5>Editar Asistencia de @asistenciaEditando.NombreCompleto</h5>
+            <div class="row">
+                <div class="col-md-4">
+                    <label>Estado</label>
+                    <select class="form-select" @bind="asistenciaEditando.Estado">
+                        <option value="Presente">Presente</option>
+                        <option value="Ausente">Ausente</option>
+                        <option value="Excusa">Excusa</option>
+                    </select>
+                </div>
+                <div class="col-md-8">
+                    <label>Observaciones</label>
+                    <InputText class="form-control" @bind-Value="asistenciaEditando.Observaciones" />
+                </div>
+            </div>
+            <div class="mt-3 d-flex gap-2">
+                <button class="btn btn-success" @onclick="ActualizarAsistencia">Guardar Cambios</button>
+                <button class="btn btn-secondary" @onclick="() => mostrandoEditor = false">Cancelar</button>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(mensaje))
+        {
+            <div class="alert alert-info mt-3">@mensaje</div>
+        }
+    }
+
+
+}
+
+@code {
+    private string modoFiltro = "fecha";
+    private DateTime fechaSeleccionada = DateTime.Today;
+    private List<AsistenciaConEstudianteDto> asistencias = new();
+
+  
+    private async Task FiltrarCambio(ChangeEventArgs e)
+    {
+        modoFiltro = e.Value?.ToString() ?? "fecha";
+        await CargarAsistencias();
+    }
+
+
+    private async Task CargarAsistencias()
+    {
+        try
+        {
+            if (modoFiltro == "todo")
+            {
+                asistencias = await Http.GetFromJsonAsync<List<AsistenciaConEstudianteDto>>("api/Asistencias");
+            }
+            else
+            {
+                var url = $"api/Asistencias/por-fecha?fecha={fechaSeleccionada:yyyy-MM-dd}";
+                asistencias = await Http.GetFromJsonAsync<List<AsistenciaConEstudianteDto>>(url);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Error al cargar asistencias: " + ex.Message);
+        }
+    }
+
+    //actualizar
+    private AsistenciaConEstudianteDto? asistenciaEditando;
+    private bool mostrandoEditor = false;
+    private string? mensaje;
+
+    private void EditarAsistencia(AsistenciaConEstudianteDto asistencia)
+    {
+        asistenciaEditando = new AsistenciaConEstudianteDto
+            {
+                AsistenciaId = asistencia.AsistenciaId,
+                EstudianteId = asistencia.EstudianteId,
+                Fecha = asistencia.Fecha,
+                NombreCompleto = asistencia.NombreCompleto,
+                Estado = asistencia.Estado,
+                Observaciones = asistencia.Observaciones
+            };
+        mostrandoEditor = true;
+    }
+    private async Task ActualizarAsistencia()
+    {
+        if (asistenciaEditando is null)
+            return;
+
+        try
+        {
+            //  Mapeo del objeto de edición al DTO correcto (esto es lo nuevo que debes agregar)
+            var dto = new AsistenciaUpdateDto
+                {
+                    AsistenciaId = asistenciaEditando.AsistenciaId,
+                    EstudianteId = asistenciaEditando.EstudianteId,
+                    Fecha = asistenciaEditando.Fecha,
+                    Estado = asistenciaEditando.Estado,
+                    Observaciones = asistenciaEditando.Observaciones
+                };
+
+            //  Enviar al backend con el DTO correcto
+            var response = await Http.PutAsJsonAsync($"api/Asistencias/{dto.AsistenciaId}", dto);
+
+            if (response.IsSuccessStatusCode)
+            {
+                await MostrarMensajeTemporal("Asistencia actualizada correctamente.");
+                mostrandoEditor = false;
+                await CargarAsistencias();
+            }
+            else
+            {
+                await MostrarMensajeTemporal($"Error: {await response.Content.ReadAsStringAsync()}");
+            }
+        }
+        catch (Exception ex)
+        {
+            await MostrarMensajeTemporal($"Error de conexión: {ex.Message}");
+        }
+    }
+
+    private async Task MostrarMensajeTemporal(string texto, int segundos = 4)
+    {
+        mensaje = texto;
+        StateHasChanged(); // Refresca la UI inmediatamente
+        await Task.Delay(segundos * 1000);
+        mensaje = null;
+        StateHasChanged(); // Vuelve a refrescar la UI
+    }
+}

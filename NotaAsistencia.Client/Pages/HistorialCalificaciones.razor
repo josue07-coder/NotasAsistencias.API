@@ -1,0 +1,173 @@
+﻿@page "/historial-calificaciones"
+@inject HttpClient Http
+@using System.Net.Http.Json
+@using NotaAsistencia.Client.Dtos
+@using NotaAsistencia.Client.Models
+
+<h3 class="text-primary text-center mb-4">Historial de Calificaciones</h3>
+
+<!-- Filtros -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <label>Filtrar por Matrícula</label>
+        <input class="form-control"
+               value="@filtroMatricula"
+               @oninput="e => { filtroMatricula = ((ChangeEventArgs)e).Value?.ToString(); AplicarFiltros(); }" />
+    </div>
+    <div class="col-md-3">
+        <label>Filtrar por Nombre</label>
+        <input class="form-control"
+               value="@filtroNombre"
+               @oninput="e => { filtroNombre = ((ChangeEventArgs)e).Value?.ToString(); AplicarFiltros(); }" />
+    </div>
+    <div class="col-md-3">
+        <label>Materia</label>
+        <select class="form-select" value="@filtroMateria" @onchange="OnFiltroMateriaChanged">
+            <option value="">Todas</option>
+            <option>Lengua española</option>
+            <option>Matemáticas</option>
+            <option>Ciencias sociales</option>
+            <option>Ciencias naturales</option>
+        </select>
+    </div>
+</div>
+
+<!-- Tabla de calificaciones -->
+@if (calificacionesFiltradas.Count == 0)
+{
+    <p class="text-muted">No se encontraron calificaciones con los filtros seleccionados.</p>
+}
+else
+{
+    <table class="table table-bordered table-striped">
+        <thead class="table-dark">
+            <tr>
+                <th>Fecha</th>
+                <th>Matrícula</th>
+                <th>Nombre</th>
+                <th>Materia</th>
+                <th>Nota</th>
+                <th>Literal</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in calificacionesFiltradas)
+            {
+                <tr>
+                    <td>@item.FechaRegistro.ToShortDateString()</td>
+                    <td>@item.Matricula</td>
+                    <td>@item.NombreCompleto</td>
+                    <td>@item.Materia</td>
+                    <td>@item.Nota</td>
+                    <td>@item.Literal</td>
+                    <td>
+                        <button class="btn btn-primary btn-sm" @onclick="() => EditarCalificacion(item)">Editar</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    @if (mostrandoEditor && calificacionEditando != null)
+    {
+        <div class="card p-3 mt-4 bg-white shadow">
+            <h5>Editar Calificación de @calificacionEditando.Materia</h5>
+            <div class="row">
+                <div class="col-md-6">
+                    <label>Nota</label>
+                    <InputNumber class="form-control" @bind-Value="calificacionEditando.Nota" />
+                </div>
+            </div>
+            <div class="mt-3 d-flex gap-2">
+                <button class="btn btn-success" @onclick="ActualizarCalificacion">Guardar Cambios</button>
+                <button class="btn btn-secondary" @onclick="() => mostrandoEditor = false">Cancelar</button>
+            </div>
+        </div>
+    }
+}
+
+@if (!string.IsNullOrEmpty(mensaje))
+{
+    <div class="alert alert-info mt-3">@mensaje</div>
+}
+
+@code {
+    private string filtroMatricula = "";
+    private string filtroNombre = "";
+    private string filtroMateria = "";
+
+    private List<CalificacionConEstudianteDto> calificaciones = new();
+    private List<CalificacionConEstudianteDto> calificacionesFiltradas = new();
+
+    private CalificacionCreateDto? calificacionEditando;
+    private int editCalificacionId;
+    private bool mostrandoEditor = false;
+    private string? mensaje;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarCalificaciones();
+    }
+
+    private async Task CargarCalificaciones()
+    {
+        calificaciones = await Http.GetFromJsonAsync<List<CalificacionConEstudianteDto>>("api/Calificaciones/con-estudiante");
+        AplicarFiltros();
+    }
+
+    private void AplicarFiltros()
+    {
+        calificacionesFiltradas = calificaciones.Where(c =>
+            (string.IsNullOrEmpty(filtroMatricula) || c.Matricula.Contains(filtroMatricula, StringComparison.OrdinalIgnoreCase)) &&
+            (string.IsNullOrEmpty(filtroNombre) || c.NombreCompleto.Contains(filtroNombre, StringComparison.OrdinalIgnoreCase)) &&
+            (string.IsNullOrEmpty(filtroMateria) || c.Materia == filtroMateria)
+        ).ToList();
+    }
+
+    private void OnFiltroMateriaChanged(ChangeEventArgs e)
+    {
+        filtroMateria = e.Value?.ToString() ?? "";
+        AplicarFiltros();
+    }
+
+    private void EditarCalificacion(CalificacionConEstudianteDto cal)
+    {
+        calificacionEditando = new CalificacionCreateDto
+            {
+                EstudianteId = cal.EstudianteId,
+                Materia = cal.Materia,
+                Nota = cal.Nota
+            };
+        editCalificacionId = cal.CalificacionId;
+        mostrandoEditor = true;
+    }
+
+    private async Task ActualizarCalificacion()
+    {
+        if (calificacionEditando is null)
+            return;
+
+        try
+        {
+            var response = await Http.PutAsJsonAsync($"api/Calificaciones/{editCalificacionId}", calificacionEditando);
+            if (response.IsSuccessStatusCode)
+            {
+                mensaje = "Calificación actualizada correctamente.";
+                mostrandoEditor = false;
+                await CargarCalificaciones();
+            }
+            else
+            {
+                mensaje = $"Error: {await response.Content.ReadAsStringAsync()}";
+            }
+        }
+        catch (Exception ex)
+        {
+            mensaje = $"Error de conexión: {ex.Message}";
+        }
+    }
+}
+
+
+

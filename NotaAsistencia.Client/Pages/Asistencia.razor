@@ -1,0 +1,102 @@
+﻿@page "/asistencias"
+@inject HttpClient Http
+@using NotaAsistencia.Client.Models
+@using System.Net.Http.Json
+
+<h3 class="text-primary text-center mb-4">Registro de Asistencia</h3>
+
+<div class="card p-4 shadow bg-light">
+    <div class="mb-3">
+        <label class="form-label">Fecha de Asistencia</label>
+        <InputDate class="form-control" @bind-Value="fechaAsistencia" />
+    </div>
+
+    @if (nuevasAsistencias.Count == 0)
+    {
+        <p>No hay estudiantes disponibles.</p>
+    }
+    else
+    {
+        <table class="table table-bordered">
+            <thead class="table-dark">
+                <tr>
+                    <th>Estudiante</th>
+                    <th>Estado</th>
+                    <th>Observación</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in nuevasAsistencias)
+                {
+                    <tr>
+                        <td>@item.NombreCompleto</td>
+                        <td>
+                            <select class="form-select" @bind="item.Estado">
+                                <option value="Presente">Presente</option>
+                                <option value="Ausente">Ausente</option>
+                                <option value="Excusa">Excusa</option>
+                            </select>
+                        </td>
+                        <td>
+                            <InputText class="form-control" @bind-Value="item.Observaciones" />
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <button class="btn btn-success" @onclick="GuardarAsistencias">Guardar Asistencias</button>
+    }
+</div>
+
+@if (!string.IsNullOrEmpty(mensaje))
+{
+    <div class="alert alert-info mt-3">@mensaje</div>
+}
+
+@code {
+    private DateTime fechaAsistencia = DateTime.Today;
+    private List<AsistenciaModel> nuevasAsistencias = new();
+    private string? mensaje;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Carga estudiantes activos
+        var estudiantes = await Http.GetFromJsonAsync<List<EstudianteModel>>("api/Estudiantes/estado?activo=true");
+
+        nuevasAsistencias = estudiantes.Select(e => new AsistenciaModel
+            {
+                EstudianteId = e.EstudianteId,
+                NombreCompleto = e.NombreCompleto
+            }).ToList();
+    }
+
+    private async Task GuardarAsistencias()
+    {
+        var registros = nuevasAsistencias.Select(a => new
+        {
+            a.EstudianteId,
+            Fecha = fechaAsistencia,
+            a.Estado,
+            a.Observaciones
+        });
+
+        var response = await Http.PostAsJsonAsync("api/Asistencias", registros);
+        if (response.IsSuccessStatusCode)
+        {
+           await MostrarMensajeTemporal( "Asistencias guardadas correctamente.");
+        }
+        else
+        {
+           await MostrarMensajeTemporal( $"Error: {await response.Content.ReadAsStringAsync()}");
+        }
+    }
+    private async Task MostrarMensajeTemporal(string texto, int segundos = 4)
+    {
+        mensaje = texto;
+        StateHasChanged(); // Refresca la UI inmediatamente
+        await Task.Delay(segundos * 1000);
+        mensaje = null;
+        StateHasChanged(); // Vuelve a refrescar la UI
+    }
+}
