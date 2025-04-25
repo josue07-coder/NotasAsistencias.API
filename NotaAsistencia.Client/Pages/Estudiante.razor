@@ -1,167 +1,67 @@
-﻿
-@page "/estudiantes"
+﻿@using NotaAsistencia.Client.Models
 @inject HttpClient Http
-@using NotaAsistencia.Client.Models
+@inject IJSRuntime JS
 @using Microsoft.AspNetCore.Components.Forms
 @using System.Net.Http.Json
-@inject IJSRuntime JS
 
+@page "/estudiantes"
 
+<h3 class="text-primary mb-4">Registrar Estudiante</h3>
 
-<h3 class="text-center mb-4 text-primary">Registro de Estudiantes</h3>
+<EditForm Model="nuevoEstudiante" OnValidSubmit="Registrar">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
 
-<div class="card shadow p-4 mb-4 bg-light rounded">
-    <EditForm Model="nuevoEstudiante" OnValidSubmit="(modoEdicion ? Actualizar : Registrar)">
-        <DataAnnotationsValidator />
-        <ValidationSummary />
-
-        <div class="row mb-3">
-            <div class="col-md-6">
-                <label class="form-label">Nombre Completo</label>
-                <InputText @bind-Value="nuevoEstudiante.NombreCompleto" class="form-control" placeholder="Ingrese nombre completo" />
-            </div>
-            <div class="col-md-6">
-                <label class="form-label">Matrícula</label>
-                <InputText @bind-Value="nuevoEstudiante.Matricula" class="form-control" placeholder="Ej: A2023123" />
-            </div>
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <label class="form-label">Nombre Completo</label>
+            <InputText @bind-Value="nuevoEstudiante.NombreCompleto" class="form-control" placeholder="Ingrese nombre completo" />
         </div>
+        <div class="col-md-6">
+            <label class="form-label">Matrícula</label>
+            <InputText @bind-Value="nuevoEstudiante.Matricula" class="form-control" placeholder="Ej: A2023123" />
+        </div>
+    </div>
 
-        <div class="row mb-3">
-            <div class="col-md-6">
-                <label class="form-label">Fecha de Nacimiento</label>
-                <InputDate @bind-Value="nuevoEstudiante.FechaNacimiento" class="form-control" />
-            </div>
-            <div class="col-md-6">
-                <label class="form-label">Teléfono</label>
-                <InputText @bind-Value="nuevoEstudiante.Telefono" class="form-control" placeholder="8091234567" />
-            </div>
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <label class="form-label">Fecha de Nacimiento</label>
+            <InputDate @bind-Value="nuevoEstudiante.FechaNacimiento" class="form-control" />
         </div>
+        <div class="col-md-6">
+            <label class="form-label">Teléfono</label>
+            <InputText @bind-Value="nuevoEstudiante.Telefono" class="form-control" placeholder="8091234567" />
+        </div>
+    </div>
 
-        <div class="row mb-3">
-            <div class="col-md-6">
-                <label class="form-label">Correo</label>
-                <InputText @bind-Value="nuevoEstudiante.Correo" class="form-control" placeholder="correo@ejemplo.com" />
-            </div>
-            <div class="col-md-6">
-                <label class="form-label">Dirección</label>
-                <InputText @bind-Value="nuevoEstudiante.Direccion" class="form-control" placeholder="Dirección actual" />
-            </div>
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <label class="form-label">Correo</label>
+            <InputText @bind-Value="nuevoEstudiante.Correo" class="form-control" placeholder="correo@ejemplo.com" />
         </div>
-        <div class="mb-3 form-check">
-            <InputCheckbox class="form-check-input" @bind-Value="nuevoEstudiante.Activo" />
-            <label class="form-check-label">¿Activo?</label>
+        <div class="col-md-6">
+            <label class="form-label">Dirección</label>
+            <InputText @bind-Value="nuevoEstudiante.Direccion" class="form-control" placeholder="Dirección actual" />
         </div>
+    </div>
 
-        <div class="d-grid">
-            @if (modoEdicion)
-            {
-                <button type="submit" class="btn btn-warning btn-lg">Actualizar Estudiante</button>
-            }
-            else
-            {
-                <button type="submit" class="btn btn-success btn-lg">Registrar Estudiante</button>
-            }
-        </div>
-    </EditForm>
-</div>
+    <div class="mb-3 form-check">
+        <InputCheckbox class="form-check-input" @bind-Value="nuevoEstudiante.Activo" />
+        <label class="form-check-label">¿Activo?</label>
+    </div>
+
+    <div class="mt-2">
+        <button class="btn btn-success btn-sm" type="submit">Guardar</button>
+    </div>
+</EditForm>
 
 @if (!string.IsNullOrEmpty(mensaje))
 {
     <div class="alert alert-info mt-2">@mensaje</div>
 }
 
-@code{
-    //Listar estudiantes
-}
-
-<h4 class="text-center mt-5 text-primary">Listado de Estudiantes</h4>
-
-<div class="mb-3">
-    <select class="form-select w-25" @onchange="FiltrarPorEstado">
-        <option value="todos" selected="@("todos" == filtroActivo)">Todos</option>
-        <option value="activos" selected="@("activos" == filtroActivo)">Activos</option>
-        <option value="inactivos" selected="@("inactivos" == filtroActivo)">Inactivos</option>
-    </select>
-
-
-</div>
-
-@if (estudiantes.Count == 0)
-{
-    <p>No hay estudiantes registrados.</p>
-}
-else
-{
-    <div class="row mb-3">
-        <div class="col-md-6">
-            <input type="text" class="form-control" placeholder="Buscar por nombre"
-                   @bind="filtroNombre" @bind:event="oninput" />
-        </div>
-        <div class="col-md-6">
-            <input type="text" class="form-control" placeholder="Buscar por matrícula"
-                   @bind="filtroMatricula" @bind:event="oninput" />
-        </div>
-    </div>
-
-    <table class="table table-striped table-bordered">
-        <thead class="table-dark">
-            <tr>
-                <th>Nombre</th>
-                <th>Matrícula</th>
-                <th>Fecha Nacimiento</th>
-                <th>Dirección</th>
-                <th>Correo</th>
-                <th>Teléfono</th>
-                <th>Estado</th>
-                <th>Acciones</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var est in EstudiantesPaginados)
-            {
-                <tr class="@(filtroActivo == "todos" && !est.Activo ? "table-secondary text-muted" : "")">
-                    <td>@est.NombreCompleto</td>
-                    <td>@est.Matricula</td>
-                    <td>@est.FechaNacimiento.ToShortDateString()</td>
-                    <td>@est.Direccion</td>
-                    <td>@est.Correo</td>
-                    <td>@est.Telefono</td>
-                    <td>@(est.Activo ? "Activo" : "Inactivo")</td>
-                    <td>
-                        <button class="btn btn-warning btn-sm me-2" @onclick="() => SeleccionarEstudiante(est)">Editar</button>
-                        <button class="btn btn-danger btn-sm" @onclick="() => ConfirmarEliminacion(est.EstudianteId)">Eliminar</button>
-                    </td>
-                </tr>
-            }
-
-        </tbody>
-
-    </table>
-    @if (TotalPaginas > 1)
-    {
-        <nav>
-            <ul class="pagination justify-content-center">
-                <li class="page-item @(paginaActual == 1 ? "disabled" : "")">
-                    <button class="page-link" @onclick="() => CambiarPagina(paginaActual - 1)">Anterior</button>
-                </li>
-                @for (int i = 1; i <= TotalPaginas; i++)
-                {
-                    <li class="page-item @(paginaActual == i ? "active" : "")">
-                        <button class="page-link" @onclick="() => CambiarPagina(i)">@i</button>
-                    </li>
-                }
-                <li class="page-item @(paginaActual == TotalPaginas ? "disabled" : "")">
-                    <button class="page-link" @onclick="() => CambiarPagina(paginaActual + 1)">Siguiente</button>
-                </li>
-            </ul>
-        </nav>
-    }
-
-}
-
-
 @code {
-    private NotaAsistencia.Client.Models.EstudianteModel nuevoEstudiante = new();
+    private EstudianteModel nuevoEstudiante = new();
     private string? mensaje;
 
     private async Task Registrar()
@@ -173,8 +73,6 @@ else
             {
                 await MostrarMensaje("Estudiante registrado correctamente.");
                 nuevoEstudiante = new();
-
-                await CargarEstudiantes();
             }
             else
             {
@@ -187,158 +85,12 @@ else
         }
     }
 
-    //Listar estudiantes
-    private List<EstudianteModel> estudiantes = new();
-    private string filtroActivo = "activos";
-
-    private async Task FiltrarPorEstado(ChangeEventArgs e)
-    {
-        filtroActivo = e.Value?.ToString()?.ToLower() ?? "activos";
-        await CargarEstudiantes();
-    }
-
-    private async Task CargarEstudiantes()
-    {
-        try
-        {
-            if (filtroActivo == "todos")
-            {
-                var activos = await Http.GetFromJsonAsync<List<EstudianteModel>>("api/Estudiantes/estado?activo=true");
-                var inactivos = await Http.GetFromJsonAsync<List<EstudianteModel>>("api/Estudiantes/estado?activo=false");
-                estudiantes = activos.Concat(inactivos).ToList();
-            }
-            else if (filtroActivo == "activos")
-            {
-                estudiantes = await Http.GetFromJsonAsync<List<EstudianteModel>>("api/Estudiantes/estado?activo=true");
-            }
-            else
-            {
-                estudiantes = await Http.GetFromJsonAsync<List<EstudianteModel>>("api/Estudiantes/estado?activo=false");
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error al cargar estudiantes: {ex.Message}");
-        }
-    }
-    protected override async Task OnInitializedAsync()
-    {
-        await CargarEstudiantes();
-    }
-    private string filtroNombre = string.Empty;
-    private string filtroMatricula = string.Empty;
-
-    // editar estudiante
-
-    private bool modoEdicion = false;
-
-    private void SeleccionarEstudiante(EstudianteModel estudianteSeleccionado)
-    {
-        nuevoEstudiante = new EstudianteModel
-            {
-                EstudianteId = estudianteSeleccionado.EstudianteId,
-                NombreCompleto = estudianteSeleccionado.NombreCompleto,
-                Matricula = estudianteSeleccionado.Matricula,
-                FechaNacimiento = estudianteSeleccionado.FechaNacimiento,
-                Direccion = estudianteSeleccionado.Direccion,
-                Correo = estudianteSeleccionado.Correo,
-                Telefono = estudianteSeleccionado.Telefono,
-                Activo = estudianteSeleccionado.Activo
-            };
-
-        modoEdicion = true;
-    }
-
-    private async Task Actualizar()
-    {
-        try
-        {
-            var response = await Http.PutAsJsonAsync($"api/Estudiantes/{nuevoEstudiante.EstudianteId}", nuevoEstudiante);
-            if (response.IsSuccessStatusCode)
-            {
-                await MostrarMensaje("Estudiante actualizado correctamente.");
-                await CargarEstudiantes();
-                nuevoEstudiante = new();
-                modoEdicion = false;
-            }
-            else
-            {
-                mensaje = $"Error al actualizar: {await response.Content.ReadAsStringAsync()}";
-            }
-        }
-        catch (Exception ex)
-        {
-            mensaje = $"Error de conexión: {ex.Message}";
-        }
-    }
-
-    //eliminar
-    private int estudianteIdAEliminar;
-
-    private async Task ConfirmarEliminacion(int id)
-    {
-        bool confirmar = await JS.InvokeAsync<bool>("confirm", "¿Estás seguro de que deseas eliminar este estudiante?");
-        if (confirmar)
-        {
-            await EliminarEstudiante(id); 
-        }
-    }
-
-
-    private async Task EliminarEstudiante(int id)
-    {
-        try
-        {
-            var response = await Http.DeleteAsync($"api/Estudiantes/{id}");
-            if (response.IsSuccessStatusCode)
-            {
-                await MostrarMensaje("Estudiante eliminado correctamente.");
-                await CargarEstudiantes();
-            }
-            else
-            {
-                mensaje = $"Error al eliminar: {await response.Content.ReadAsStringAsync()}";
-            }
-        }
-        catch (Exception ex)
-        {
-            mensaje = $"Error de conexión: {ex.Message}";
-        }
-    }
-
-    // temporizador
     private async Task MostrarMensaje(string texto, int segundos = 3)
     {
         mensaje = texto;
-        StateHasChanged(); // Refresca la vista
-
-        await Task.Delay(segundos * 1000); // Espera unos segundos
+        StateHasChanged();
+        await Task.Delay(segundos * 1000);
         mensaje = null;
-        StateHasChanged(); // Oculta el mensaje
+        StateHasChanged();
     }
-
-    // paginacion
-    private int paginaActual = 1;
-    private int tamanioPagina = 5; // cantidad de estudiantes por página
-
-    private IEnumerable<EstudianteModel> EstudiantesPaginados =>
-        estudiantes
-        .Where(e => e.NombreCompleto.Contains(filtroNombre, StringComparison.OrdinalIgnoreCase) &&
-                    e.Matricula.Contains(filtroMatricula, StringComparison.OrdinalIgnoreCase))
-        .Skip((paginaActual - 1) * tamanioPagina)
-        .Take(tamanioPagina);
-
-    private int TotalPaginas =>
-        (int)Math.Ceiling((double)estudiantes
-            .Where(e => e.NombreCompleto.Contains(filtroNombre, StringComparison.OrdinalIgnoreCase) &&
-                        e.Matricula.Contains(filtroMatricula, StringComparison.OrdinalIgnoreCase)).Count() / tamanioPagina);
-
-    private void CambiarPagina(int nuevaPagina)
-    {
-        if (nuevaPagina >= 1 && nuevaPagina <= TotalPaginas)
-        {
-            paginaActual = nuevaPagina;
-        }
-    }
-
 }

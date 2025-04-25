@@ -1,19 +1,50 @@
 ﻿@page "/asistencias"
-@inject HttpClient Http
-@using NotaAsistencia.Client.Models
-@using System.Net.Http.Json
 
-<h3 class="text-primary text-center mb-4">Registro de Asistencia</h3>
+@using NotaAsistencia.Client.Models
+@inject HttpClient Http
+@inject IJSRuntime JS
+@using System.Net.Http.Json
+@using NotaAsistencia.Client.Dtos
+
+<!-- Modal de éxito -->
+<div class="modal fade" id="modalExitoAsistencia" tabindex="-1" aria-labelledby="modalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-success">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">✅ Registro Exitoso</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">Las asistencias fueron registradas correctamente.</div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-success" data-bs-dismiss="modal">Aceptar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<h3 class="text-primary text-center mb-4">Registro de Asistencia por Materia</h3>
 
 <div class="card p-4 shadow bg-light">
-    <div class="mb-3">
-        <label class="form-label">Fecha de Asistencia</label>
-        <InputDate class="form-control" @bind-Value="fechaAsistencia" />
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <label class="form-label">Seleccione una Materia</label>
+            <select class="form-select" @bind-Value="materiaSeleccionadaId" @bind-Value:event="onchange">
+                <option value="">-- Seleccione --</option>
+                @foreach (var mat in materiasDisponibles)
+                {
+                    <option value="@mat.MateriaId">@mat.Nombre</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Fecha de Asistencia</label>
+            <InputDate class="form-control" @bind-Value="fechaAsistencia" />
+        </div>
     </div>
 
     @if (nuevasAsistencias.Count == 0)
     {
-        <p>No hay estudiantes disponibles.</p>
+        <p class="text-muted">No hay estudiantes asignados a esta materia.</p>
     }
     else
     {
@@ -58,45 +89,62 @@
     private DateTime fechaAsistencia = DateTime.Today;
     private List<AsistenciaModel> nuevasAsistencias = new();
     private string? mensaje;
+    private string? materiaSeleccionadaId;
+    private List<MateriaModel> materiasDisponibles = new();
 
     protected override async Task OnInitializedAsync()
     {
-        // Carga estudiantes activos
-        var estudiantes = await Http.GetFromJsonAsync<List<EstudianteModel>>("api/Estudiantes/estado?activo=true");
+        materiasDisponibles = await Http.GetFromJsonAsync<List<MateriaModel>>("api/Materias/activas");
+    }
 
-        nuevasAsistencias = estudiantes.Select(e => new AsistenciaModel
+    private async Task OnMateriaChanged(ChangeEventArgs e)
+    {
+        materiaSeleccionadaId = e.Value?.ToString();
+        if (int.TryParse(materiaSeleccionadaId, out int idMateria))
+        {
+            var estudiantes = await Http.GetFromJsonAsync<List<EstudianteModel>>($"api/Materias/{idMateria}/estudiantes");
+            nuevasAsistencias = estudiantes.Select(e => new AsistenciaModel
             {
                 EstudianteId = e.EstudianteId,
                 NombreCompleto = e.NombreCompleto
             }).ToList();
+        }
+        else
+        {
+            nuevasAsistencias.Clear();
+        }
     }
 
     private async Task GuardarAsistencias()
     {
+        if (string.IsNullOrEmpty(materiaSeleccionadaId)) return;
+
         var registros = nuevasAsistencias.Select(a => new
         {
             a.EstudianteId,
             Fecha = fechaAsistencia,
             a.Estado,
-            a.Observaciones
+            a.Observaciones,
+            MateriaId = int.Parse(materiaSeleccionadaId!)
         });
 
         var response = await Http.PostAsJsonAsync("api/Asistencias", registros);
         if (response.IsSuccessStatusCode)
         {
-           await MostrarMensajeTemporal( "Asistencias guardadas correctamente.");
+            await JS.InvokeVoidAsync("mostrarModal", "modalExitoAsistencia");
         }
         else
         {
-           await MostrarMensajeTemporal( $"Error: {await response.Content.ReadAsStringAsync()}");
+            await MostrarMensajeTemporal($"Error: {await response.Content.ReadAsStringAsync()}");
         }
     }
+
     private async Task MostrarMensajeTemporal(string texto, int segundos = 4)
     {
         mensaje = texto;
-        StateHasChanged(); // Refresca la UI inmediatamente
+        StateHasChanged();
         await Task.Delay(segundos * 1000);
         mensaje = null;
-        StateHasChanged(); // Vuelve a refrescar la UI
+        StateHasChanged();
     }
 }

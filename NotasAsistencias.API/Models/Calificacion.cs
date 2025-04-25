@@ -11,9 +11,6 @@ namespace NotasAsistencias.API.Models
         [Required]
         public int EstudianteId { get; set; }
 
-        [Required]
-        [StringLength(50)]
-        public string Materia { get; set; }  // Fija: Lengua, Matemática, etc.
 
         [Range(0, 100)]
         public int Nota { get; set; }
@@ -27,5 +24,11 @@ namespace NotasAsistencias.API.Models
 
         // Relación
         public Estudiante Estudiante { get; set; }
+
+        public int MateriaId { get; set; }
+        public Materia Materia { get; set; }
+
+        public int DocenteId { get; set; }
+        public Docente Docente { get; set; }    
     }
 }

@@ -1,0 +1,61 @@
+﻿@page "/materias"
+@inject HttpClient Http
+@inject IJSRuntime JS
+@using NotaAsistencia.Client.Models
+@using System.Net.Http.Json
+
+<h3 class="text-primary mb-4" style="margin-left: 40px;">Registrar Materia</h3>
+
+<div class="card p-4 shadow bg-light" style="max-width: 500px; margin-left: 40px;">
+    <EditForm Model="nuevaMateria" OnValidSubmit="GuardarMateria">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="mb-3">
+            <label class="form-label">Nombre de la materia</label>
+            <InputText class="form-control" @bind-Value="nuevaMateria.Nombre" placeholder="Ej. Matemáticas" />
+            <ValidationMessage For="@(() => nuevaMateria.Nombre)" />
+        </div>
+
+        <button class="btn btn-success" type="submit">Guardar</button>
+    </EditForm>
+
+   
+</div>
+
+<!-- Modal de éxito -->
+<div class="modal fade" id="modalExitoMateria" tabindex="-1" aria-labelledby="modalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-success">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">✅ Registro Exitoso</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">La materia fue registrada correctamente.</div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-success" data-bs-dismiss="modal">Aceptar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private MateriaCreateModel nuevaMateria = new();
+    
+
+    private async Task GuardarMateria()
+    {
+       
+        var response = await Http.PostAsJsonAsync("api/Materias", nuevaMateria);
+        if (response.IsSuccessStatusCode)
+        {
+            nuevaMateria = new(); // Limpiar
+            await JS.InvokeVoidAsync("mostrarModal", "modalExitoMateria");
+        }
+        else
+        {
+            var error = await response.Content.ReadAsStringAsync();
+            await JS.InvokeVoidAsync("alert", $"Error: {error}");
+        }
+    }
+}

@@ -40,7 +40,6 @@ namespace NotasAsistencias.API.Controllers
                     CalificacionId = c.CalificacionId,
                     EstudianteId = c.EstudianteId,
                     NombreEstudiante = c.Estudiante.NombreCompleto,
-                    Materia = c.Materia,
                     Nota = c.Nota,
                     FechaRegistro = c.FechaRegistro
                 }).ToListAsync();
@@ -53,21 +52,25 @@ namespace NotasAsistencias.API.Controllers
         {
             var datos = await _context.Calificaciones
                 .Include(c => c.Estudiante)
+                .Include(c => c.Materia)
+                .Include(c => c.Docente)
                 .Select(c => new CalificacionConEstudianteDto
                 {
                     CalificacionId = c.CalificacionId,
                     EstudianteId = c.EstudianteId,
                     NombreCompleto = c.Estudiante.NombreCompleto,
                     Matricula = c.Estudiante.Matricula,
-                    Materia = c.Materia,
                     Nota = c.Nota,
                     Literal = c.Literal,
-                    FechaRegistro = c.FechaRegistro
+                    FechaRegistro = c.FechaRegistro,
+                    Materia = c.Materia.Nombre,
+                    Docente = c.Docente.NombreCompleto
                 })
                 .ToListAsync();
 
             return Ok(datos);
         }
+
 
 
         // PUT: api/Calificacions/5
@@ -95,27 +98,43 @@ namespace NotasAsistencias.API.Controllers
 
 
         // POST: api/Calificacions
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPost]
-        public async Task<ActionResult> PostCalificacion(CalificacionCreateDto dto)
+        [HttpPost("grupal")]
+        public async Task<IActionResult> PostCalificacionesGrupo([FromBody] CalificacionGrupalDto dto)
         {
-            var calificacion = new Calificacion
+            try
             {
-                EstudianteId = dto.EstudianteId,
-                Materia = dto.Materia,
-                Nota = dto.Nota,
-                FechaRegistro = DateTime.Now
-            };
+                if (dto == null || dto.Calificaciones == null || !dto.Calificaciones.Any())
+                    return BadRequest("No se proporcionaron calificaciones.");
 
-            var error = await ValidarCalificacionAsync(calificacion);
-            if (error != null)
-                return BadRequest(new { mensaje = error });
+                foreach (var item in dto.Calificaciones)
+                {
+                    var calificacion = new Calificacion
+                    {
+                        EstudianteId = item.EstudianteId,
+                        MateriaId = dto.MateriaId,
+                        DocenteId = dto.DocenteId,
+                        Nota = item.Nota,
+                        FechaRegistro = DateTime.Now
+                    };
 
-            _context.Calificaciones.Add(calificacion);
-            await _context.SaveChangesAsync();
+                    var error = await ValidarCalificacionAsync(calificacion);
+                    if (error != null)
+                        return BadRequest(new { mensaje = $"Error en estudiante ID {item.EstudianteId}: {error}" });
 
-            return Ok("Calificación registrada");
+                    _context.Calificaciones.Add(calificacion);
+                }
+
+                await _context.SaveChangesAsync();
+                return Ok("Calificaciones grupales registradas correctamente.");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error interno: {ex.Message} - {ex.InnerException?.Message}");
+            }
         }
+
+
+
 
 
         // DELETE: api/Calificacions/5
@@ -148,11 +167,6 @@ namespace NotasAsistencias.API.Controllers
 
             if (!estudiante.Activo)
                 return "El estudiante está inactivo.";
-
-            // Validar materia
-            var materiasValidas = new[] { "Lengua española", "Matemáticas", "Ciencias sociales", "Ciencias naturales" };
-            if (!materiasValidas.Contains(calificacion.Materia))
-                return "Materia no válida. Solo se permiten las 4 materias básicas.";
 
             // Validar nota
             if (calificacion.Nota < 0 || calificacion.Nota > 100)

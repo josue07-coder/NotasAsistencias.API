@@ -1,0 +1,122 @@
+﻿@page "/asignar-estudiantes-materia"
+@inject HttpClient Http
+@using NotaAsistencia.Client.Dtos
+@using System.Net.Http.Json
+@inject IJSRuntime JS
+
+<h3 class="text-primary mb-4">Asignar Estudiantes a una Materia</h3>
+
+@if (materias == null || estudiantes == null)
+{
+    <p><em>Cargando datos...</em></p>
+}
+else
+{
+    <EditForm Model="modeloAsignacionEstudiantes" OnValidSubmit="AgregarEstudiantes">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="mb-3">
+            <label>Materia</label>
+            <select class="form-select" @bind="modeloAsignacionEstudiantes.MateriaId" required>
+                <option value="">Seleccione una materia</option>
+                @foreach (var materia in materias)
+                {
+                    <option value="@materia.MateriaId">@materia.Nombre</option>
+                }
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label>Estudiantes</label>
+            <select multiple class="form-select" @onchange="OnEstudiantesSeleccionadosChanged">
+                @foreach (var estudiante in estudiantes)
+                {
+                    <option value="@estudiante.EstudianteId">@estudiante.NombreCompleto</option>
+                }
+            </select>
+        </div>
+
+        <button type="submit" class="btn btn-success">Asignar Estudiantes</button>
+
+        @if (!string.IsNullOrWhiteSpace(mensaje))
+        {
+            <div class="alert alert-info mt-3">@mensaje</div>
+        }
+    </EditForm>
+
+    <!-- Modal de éxito -->
+<div class="modal fade" id="modalExitoDocentes" tabindex="-1" aria-labelledby="modalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-success">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">✅ Asignación Exitosa</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                Estudiante asignado correctamente a la mteria
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-success" data-bs-dismiss="modal">Aceptar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+}
+
+@code {
+    private List<MateriaDtos> materias = new();
+    private List<EstudianteDtos> estudiantes = new();
+
+    private AsignacionEstudiantesDto modeloAsignacionEstudiantes = new();
+    private string? mensaje;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            materias = await Http.GetFromJsonAsync<List<MateriaDtos>>("api/Materias/estado?estado=Activas");
+            estudiantes = await Http.GetFromJsonAsync<List<EstudianteDtos>>("api/Materias/estudiantes?activo=true");
+
+        }
+        catch (Exception ex)
+        {
+            mensaje = "❌ Error al cargar datos: " + ex.Message;
+        }
+    }
+
+    private void OnEstudiantesSeleccionadosChanged(ChangeEventArgs e)
+    {
+        var selectedOptions = e.Value as IEnumerable<string>;
+        if (selectedOptions != null)
+        {
+            modeloAsignacionEstudiantes.EstudiantesIds = selectedOptions.Select(int.Parse).ToList();
+        }
+    }
+
+    private async Task AgregarEstudiantes()
+    {
+        if (modeloAsignacionEstudiantes.MateriaId == 0 || modeloAsignacionEstudiantes.EstudiantesIds.Count == 0)
+        {
+            mensaje = "Debe seleccionar una materia y al menos un estudiante.";
+            return;
+        }
+
+        var response = await Http.PostAsJsonAsync(
+    $"api/Materias/{modeloAsignacionEstudiantes.MateriaId}/asignar-estudiantes",
+    modeloAsignacionEstudiantes.EstudiantesIds
+    );
+
+        if (response.IsSuccessStatusCode)
+        {
+            modeloAsignacionEstudiantes = new(); // Reiniciar formulario
+            await JS.InvokeVoidAsync("mostrarModal", "modalExitoDocentes");
+            
+        }
+        else
+        {
+            mensaje = $"❌ Error: {await response.Content.ReadAsStringAsync()}";
+        }
+    }
+}

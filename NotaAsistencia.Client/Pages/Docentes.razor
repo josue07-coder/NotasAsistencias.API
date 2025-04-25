@@ -1,0 +1,131 @@
+﻿@page "/docentes"
+@inject HttpClient Http
+@using NotaAsistencia.Client.Models
+@using System.Net.Http.Json
+@using NotaAsistencia.Client.Models
+@inject IJSRuntime JS
+
+
+
+<h3 class="text-primary text-center mb-4">Registro de Docentes</h3>
+
+<div class="card p-4 shadow bg-light">
+    <EditForm Model="nuevoDocente" OnValidSubmit="GuardarDocente">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label class="form-label">Nombre Completo</label>
+                <InputText class="form-control" @bind-Value="nuevoDocente.NombreCompleto" />
+                <ValidationMessage For="@(() => nuevoDocente.NombreCompleto)" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Correo</label>
+                <InputText class="form-control" @bind-Value="nuevoDocente.Correo" />
+                <ValidationMessage For="@(() => nuevoDocente.Correo)" />
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label class="form-label">Teléfono</label>
+                <InputText class="form-control" @bind-Value="nuevoDocente.Telefono" />
+                <ValidationMessage For="@(() => nuevoDocente.Telefono)" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Dirección</label>
+                <InputText class="form-control" @bind-Value="nuevoDocente.Direccion" />
+                <ValidationMessage For="@(() => nuevoDocente.Direccion)" />
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label class="form-label">Fecha de Nacimiento</label>
+                <InputDate class="form-control" @bind-Value="nuevoDocente.FechaNacimiento" />
+                <ValidationMessage For="@(() => nuevoDocente.FechaNacimiento)" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Fecha de Contratación</label>
+                <InputDate class="form-control" @bind-Value="nuevoDocente.FechaContratacion" />
+                <ValidationMessage For="@(() => nuevoDocente.FechaContratacion)" />
+            </div>
+        </div>
+
+        <div class="mt-3">
+            <button class="btn btn-success" type="submit">Guardar Docente</button>
+        </div>
+
+    </EditForm>
+    <!-- Modal de éxito -->
+    <div class="modal fade" id="modalExito" tabindex="-1" aria-labelledby="modalExitoLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-success">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title" id="modalExitoLabel">✅ ¡Éxito!</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    Docente guardado correctamente.
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-success" data-bs-dismiss="modal">Aceptar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Modal de error -->
+    <div class="modal fade" id="modalError" tabindex="-1" aria-labelledby="modalErrorLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-danger">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="modalErrorLabel">❌ Error</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    @mensajeError
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-danger" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+</div>
+
+@if (!string.IsNullOrEmpty(mensaje))
+{
+    <div class="alert alert-info mt-3">@mensaje</div>
+}
+
+@code {
+    private DocenteCreateModel nuevoDocente = new();
+    private string? mensaje;
+    private string? mensajeError;
+
+    private async Task GuardarDocente()
+    {
+        try
+        {
+            var response = await Http.PostAsJsonAsync("api/Docentes", nuevoDocente);
+            if (response.IsSuccessStatusCode)
+            {
+                nuevoDocente = new(); // Limpiar
+                await JS.InvokeVoidAsync("mostrarModal", "modalExito");
+            }
+            else
+            {
+                mensajeError = $"Error: {await response.Content.ReadAsStringAsync()}";
+                await JS.InvokeVoidAsync("mostrarModal", "modalError");
+            }
+        }
+        catch (Exception ex)
+        {
+            mensajeError = $"Error de conexión: {ex.Message}";
+            await JS.InvokeVoidAsync("mostrarModal", "modalError");
+        }
+    }
+}

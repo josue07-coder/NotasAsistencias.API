@@ -46,6 +46,7 @@ else
                 <th>Matrícula</th>
                 <th>Nombre</th>
                 <th>Materia</th>
+                <th>Docente</th> 
                 <th>Nota</th>
                 <th>Literal</th>
                 <th>Acciones</th>
@@ -59,6 +60,7 @@ else
                     <td>@item.Matricula</td>
                     <td>@item.NombreCompleto</td>
                     <td>@item.Materia</td>
+                    <td>@item.Docente</td> 
                     <td>@item.Nota</td>
                     <td>@item.Literal</td>
                     <td>
@@ -156,6 +158,8 @@ else
                 mensaje = "Calificación actualizada correctamente.";
                 mostrandoEditor = false;
                 await CargarCalificaciones();
+                await Task.Delay(3000); // Espera 3 segundos
+                mensaje = null;
             }
             else
             {

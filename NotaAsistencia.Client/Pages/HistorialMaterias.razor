@@ -1,0 +1,199 @@
+﻿@page "/historial-materias"
+@inject HttpClient Http
+@using NotaAsistencia.Client.Dtos
+@using System.Net.Http.Json
+@inject IJSRuntime JS
+
+<h3 class="text-primary mb-4">Historial de Materias</h3>
+
+<div class="mb-3">
+    <label class="form-label">Filtrar por estado:</label>
+    <select class="form-select" @onchange="OnFiltroChanged">
+        <option value="Activas" selected="@("Activas" == filtroEstado)">Activas</option>
+        <option value="Inactivas" selected="@("Inactivas" == filtroEstado)">Inactivas</option>
+        <option value="Todas" selected="@("Todas" == filtroEstado)">Todas</option>
+    </select>
+
+</div>
+
+@if (materias == null)
+{
+    <p><em>Cargando materias...</em></p>
+}
+else if (!materias.Any())
+{
+    <p>No hay materias registradas.</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Estado</th> <!-- Nueva columna -->
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var materia in materias)
+            {
+                <tr>
+                    <td>@materia.Nombre</td>
+                    <td>
+                        <span class="badge @(materia.Activa ? "bg-success" : "bg-secondary")">
+                            @(materia.Activa ? "Activa" : "Inactiva")
+                        </span>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-primary me-2" @onclick="() => MostrarModalEditar(materia)">Editar</button>
+                        <button class="btn btn-sm btn-danger" @onclick="() => ConfirmarEliminar(materia.MateriaId)">Eliminar</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+}
+
+<!-- Modal Confirmación Eliminación -->
+<div class="modal fade" id="modalEliminar" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">Confirmar Eliminación</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                ¿Está seguro de que desea eliminar esta materia?
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button class="btn btn-danger" @onclick="EliminarMateriaConfirmada">Eliminar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Edición Materia -->
+<div class="modal fade" id="modalEditar" tabindex="-1" aria-labelledby="modalEditarLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-primary">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="modalEditarLabel">Editar Materia</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <EditForm Model="modeloEditar" OnValidSubmit="GuardarCambiosMateria">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+
+                    <div class="mb-3">
+                        <label class="form-label">Nombre</label>
+                        <input class="form-control" @bind="modeloEditar.Nombre" />
+                    </div>
+
+                    <div class="d-flex justify-content-end">
+                        <button class="btn btn-success me-2" type="submit">Guardar</button>
+                        <button class="btn btn-secondary" type="button" @onclick="CancelarEdicion">Cancelar</button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Modal de Éxito -->
+<div class="modal fade" id="modalExito" tabindex="-1" aria-labelledby="modalExitoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-success">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="modalExitoLabel">✅ Éxito</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                @mensaje
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-success" data-bs-dismiss="modal">Aceptar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+@code {
+    private List<MateriaDtos> materias = new();
+    private string filtroEstado = "Activas";
+    private int idMateriaAEliminar;
+
+    private MateriaDtos modeloEditar = new();
+    private string mensaje = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarMaterias();
+    }
+
+    private async Task CargarMaterias()
+    {
+        materias = await Http.GetFromJsonAsync<List<MateriaDtos>>($"api/Materias/estado?estado={filtroEstado}");
+    }
+
+    private async Task OnFiltroChanged(ChangeEventArgs e)
+    {
+        filtroEstado = e.Value?.ToString() ?? "Activas";
+        await CargarMaterias();
+    }
+
+    private async Task MostrarModalEditar(MateriaDtos materia)
+    {
+        modeloEditar = new MateriaDtos
+            {
+                MateriaId = materia.MateriaId,
+                Nombre = materia.Nombre
+            };
+
+        await Task.Delay(100); // Asegura renderizado antes de mostrar modal
+        await JS.InvokeVoidAsync("mostrarModal", "modalEditar");
+    }
+
+    private async Task GuardarCambiosMateria()
+    {
+        var response = await Http.PutAsJsonAsync($"api/Materias/{modeloEditar.MateriaId}", modeloEditar);
+        if (response.IsSuccessStatusCode)
+        {
+            await CargarMaterias();
+            mensaje = "✅ Materia actualizada correctamente.";
+            await JS.InvokeVoidAsync("cerrarModal", "modalEditar");
+            await JS.InvokeVoidAsync("mostrarModal", "modalExito");
+        }
+        else
+        {
+            mensaje = "❌ Error al guardar los cambios.";
+            await JS.InvokeVoidAsync("mostrarModal", "modalExito");
+        }
+    }
+
+    private async Task CancelarEdicion()
+    {
+        modeloEditar = new();
+        await JS.InvokeVoidAsync("cerrarModal", "modalEditar");
+    }
+
+    private void ConfirmarEliminar(int id)
+    {
+        idMateriaAEliminar = id;
+        JS.InvokeVoidAsync("mostrarModal", "modalEliminar");
+    }
+
+    private async Task EliminarMateriaConfirmada()
+    {
+        var response = await Http.DeleteAsync($"api/Materias/{idMateriaAEliminar}");
+        if (response.IsSuccessStatusCode)
+        {
+            await CargarMaterias();
+            idMateriaAEliminar = 0;
+        }
+    }
+}

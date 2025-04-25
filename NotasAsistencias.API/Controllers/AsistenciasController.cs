@@ -24,26 +24,26 @@ namespace NotasAsistencias.API.Controllers
 
         // GET: api/Asistencias
         [HttpGet]
-public async Task<ActionResult<IEnumerable<AsistenciaConEstudianteDto>>> GetAsistencias()
-{
-    var asistencias = await _context.Asistencias
-        .Include(a => a.Estudiante)
-        .Where(a => a.Estudiante.Activo)
-        .OrderByDescending(a => a.Fecha)
-        .Select(a => new AsistenciaConEstudianteDto
+        public async Task<ActionResult<IEnumerable<AsistenciaConEstudianteDto>>> GetAsistencias()
         {
-            AsistenciaId = a.AsistenciaId,
-            EstudianteId = a.EstudianteId, //  AÑADE ESTO TAMBIÉN
-            NombreCompleto = a.Estudiante.NombreCompleto,
-            Fecha = a.Fecha,
-            Estado = a.Estado,
-            Observaciones = a.Observaciones
-        })
+            var asistencias = await _context.Asistencias
+                .Include(a => a.Estudiante)
+                .Where(a => a.Estudiante.Activo)
+                .OrderByDescending(a => a.Fecha)
+                .Select(a => new AsistenciaConEstudianteDto
+                {
+                    AsistenciaId = a.AsistenciaId,
+                    EstudianteId = a.EstudianteId, //  AÑADE ESTO TAMBIÉN
+                    NombreCompleto = a.Estudiante.NombreCompleto,
+                    Fecha = a.Fecha,
+                    Estado = a.Estado,
+                    Observaciones = a.Observaciones
+                })
 
-        .ToListAsync();
+                .ToListAsync();
 
-    return Ok(asistencias);
-}
+            return Ok(asistencias);
+        }
 
 
         // GET: api/Asistencias/5

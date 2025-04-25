@@ -9,6 +9,7 @@
 
 <div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
     <nav class="flex-column px-3">
+
         <!-- Estudiantes -->
         <div class="nav-item mb-2">
             <a class="nav-link" href="#" @onclick="@(() => ToggleSubmenu("estudiantes"))">
@@ -18,9 +19,12 @@
             {
                 <div class="ms-4">
                     <NavLink class="nav-link" href="estudiantes">Registrar Estudiante</NavLink>
+                    <NavLink class="nav-link" href="listado-estudiantes">Listado Estudiantes</NavLink>
                 </div>
             }
         </div>
+
+
 
         <!-- Asistencia -->
         <div class="nav-item mb-2">
@@ -31,7 +35,7 @@
             {
                 <div class="ms-4">
                     <NavLink class="nav-link" href="asistencias">Registrar Asistencia</NavLink>
-                    <NavLink class="nav-link" href="historial-asistencia">Historial de Asistencia</NavLink>
+                    <NavLink class="nav-link" href="historial-asistencia">Historial Asistencia</NavLink>
                 </div>
             }
         </div>
@@ -45,23 +49,59 @@
             {
                 <div class="ms-4">
                     <NavLink class="nav-link" href="calificaciones">Registrar Calificaciones</NavLink>
-                    <NavLink class="nav-link" href="historial-calificaciones">Historial de Calificaciones</NavLink>
+                    <NavLink class="nav-link" href="historial-calificaciones">Historial Calificaciones</NavLink>
                 </div>
             }
         </div>
+
+        <!-- Docentes -->
+        <div class="nav-item mb-2">
+            <a class="nav-link" href="#" @onclick="@(() => ToggleSubmenu("docentes"))">
+                <span class="bi bi-person-badge-fill" aria-hidden="true"></span> Docentes
+            </a>
+            @if (submenuAbierto["docentes"])
+            {
+                <div class="ms-4">
+                    <NavLink class="nav-link" href="docentes">Registrar Docente</NavLink>
+                    <NavLink class="nav-link" href="historial-docentes">Historial de Docentes</NavLink>
+                </div>
+            }
+        </div>
+
+        
+        
+        <!-- Materias -->
+        <div class="nav-item mb-2">
+            <a class="nav-link" href="#" @onclick="@(() => ToggleSubmenu("materias"))">
+                <span class="bi bi-journal-bookmark-fill" aria-hidden="true"></span> Materias
+            </a>
+            @if (submenuAbierto["materias"])
+            {
+                <div class="ms-4">
+                    <NavLink class="nav-link" href="registrar-materia">Registrar Materia</NavLink>
+                    <NavLink class="nav-link" href="asignar-docentes-materia">Asignar Docentes</NavLink>
+                    <NavLink class="nav-link" href="asignar-estudiantes-materia">Asignar Estudiantes</NavLink>
+                    <NavLink class="nav-link" href="historial-materias">Historial de Materias</NavLink>
+                </div>
+            }
+        </div>
+
+
+
     </nav>
 </div>
 
 @code {
     private bool collapseNavMenu = true;
-
     private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
 
     private Dictionary<string, bool> submenuAbierto = new()
     {
         { "estudiantes", false },
         { "asistencias", false },
-        { "calificaciones", false }
+        { "calificaciones", false },
+        { "docentes", false },
+        { "materias", false }
     };
 
     private void ToggleNavMenu()
@@ -71,14 +111,13 @@
 
     private void ToggleSubmenu(string clave)
     {
-        // Cierra todos primero
         foreach (var key in submenuAbierto.Keys.ToList())
         {
             submenuAbierto[key] = false;
         }
 
-        // Abre solo el que se seleccionó
         submenuAbierto[clave] = true;
     }
 }
+
 

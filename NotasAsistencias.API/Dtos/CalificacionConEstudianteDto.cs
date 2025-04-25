@@ -10,5 +10,7 @@
         public int Nota { get; set; }
         public string Literal { get; set; } = string.Empty;
         public DateTime FechaRegistro { get; set; }
+
+        public string Docente { get; set; } = string.Empty;
     }
 }

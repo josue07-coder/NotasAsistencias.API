@@ -10,10 +10,10 @@ namespace NotasAsistencias.API.Models
 
         [Required]
         [StringLength(100)]
-        public string NombreCompleto { get; set; }
+        public string NombreCompleto { get; set; } = string.Empty;
 
         [StringLength(20)]
-        public string? Matricula { get; set; }
+        public string? Matricula { get; set; } = string.Empty;
 
         [Required]
         [DataType(DataType.Date)]
@@ -24,21 +24,23 @@ namespace NotasAsistencias.API.Models
                           (FechaNacimiento.Date > DateTime.Today.AddYears(-(DateTime.Today.Year - FechaNacimiento.Year)) ? 1 : 0);
 
         [StringLength(200)]
-        public string? Direccion { get; set; }
+        public string? Direccion { get; set; } = string.Empty;
 
         [EmailAddress]
         [StringLength(100)]
-        public string? Correo { get; set; }
+        public string? Correo { get; set; } = string.Empty;
 
         [StringLength(20)]
-        public string? Telefono { get; set; }
+        public string? Telefono { get; set; } = string.Empty;
 
         public bool Activo { get; set; } = true;
 
         public DateTime FechaRegistro { get; set; } = DateTime.Now;
 
         // Relaciones
-        public ICollection<Calificacion> Calificaciones { get; set; }
-        public ICollection<Asistencia> Asistencias { get; set; }
+        public ICollection<Calificacion> Calificaciones { get; set; } = new List<Calificacion>();
+        public ICollection<Asistencia> Asistencias { get; set; } = new List<Asistencia>();
+        public ICollection<MateriaEstudiante> Materias { get; set; } = new List<MateriaEstudiante>();
+
     }
 }

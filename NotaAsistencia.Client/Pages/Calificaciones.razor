@@ -3,44 +3,58 @@
 @using System.Net.Http.Json
 @using NotaAsistencia.Client.Dtos
 @using NotaAsistencia.Client.Models
+@inject IJSRuntime JS
+@using System.Text.Json
+
+
 
 <h3 class="text-center text-primary">Registro de Calificaciones</h3>
 
 
 <div class="card shadow p-4 bg-light mb-4">
-    <EditForm Model="nuevaCalificacion" OnValidSubmit="Guardar">
-        <DataAnnotationsValidator />
-        <ValidationSummary />
+    <select class="form-select" @onchange="CargarDetalleMateria">
+        <option disabled selected>-- Seleccione una materia --</option>
+        @foreach (var m in materias)
+        {
+            <option value="@m.MateriaId">@m.Nombre</option>
+        }
+    </select>
 
-        <div class="mb-3">
-            <label class="form-label">Estudiante</label>
-            <select class="form-select" @bind="nuevaCalificacion.EstudianteId">
-                <option value="">-- Seleccione un estudiante --</option>
-                @foreach (var est in estudiantes)
-                {
-                    <option value="@est.EstudianteId">@est.NombreCompleto</option>
-                }
-            </select>
-        </div>
+@if (!string.IsNullOrEmpty(docenteAsignado))
+{
+    <p><strong>Docente:</strong> @docenteAsignado</p>
+}
 
-        <div class="mb-3">
-            <label class="form-label">Materia</label>
-            <select class="form-select" @bind="nuevaCalificacion.Materia">
-                <option value="">-- Seleccione una materia --</option>
-                <option>Lengua española</option>
-                <option>Matemáticas</option>
-                <option>Ciencias sociales</option>
-                <option>Ciencias naturales</option>
-            </select>
-        </div>
+    @if (calificacionGrupal.Calificaciones.Any())
+    {
+        <EditForm Model="calificacionGrupal" OnValidSubmit="GuardarCalificaciones">
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Estudiante</th>
+                        <th>Nota</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var nota in calificacionGrupal.Calificaciones)
+                    {
+                        <tr>
+                            <td>@estudiantes.FirstOrDefault(e => e.EstudianteId == nota.EstudianteId)?.NombreCompleto</td>
+                            <td>
+                                <InputNumber @bind-Value="nota.Nota" class="form-control" />
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <button class="btn btn-success" type="submit">Guardar Todas</button>
+        </EditForm>
+    }
+    else if (materiaSeleccionadaId > 0)
+    {
+        <p class="text-danger mt-3">No hay estudiantes asignados a esta materia.</p>
+    }
 
-        <div class="mb-3">
-            <label class="form-label">Nota</label>
-            <InputNumber class="form-control" @bind-Value="nuevaCalificacion.Nota" />
-        </div>
-
-        <button class="btn btn-success w-100" type="submit">Guardar Calificación</button>
-    </EditForm>
 </div>
 
 @if (!string.IsNullOrEmpty(mensaje))
@@ -48,47 +62,65 @@
     <div class="alert alert-info">@mensaje</div>
 }
 @code {
-    private CalificacionCreateDto nuevaCalificacion = new();
-    private List<EstudianteModel> estudiantes = new();
-    private string? mensaje;
+    private List<MateriaDtos> materias = new();
+    private string docenteAsignado = "";
+    private List<EstudianteDtos> estudiantes = new();
+    private CalificacionGrupalDto calificacionGrupal = new();
+    private int materiaSeleccionadaId;
+    private string mensaje;
+    private int docenteIdSeleccionado;
+
 
     protected override async Task OnInitializedAsync()
     {
-        estudiantes = await Http.GetFromJsonAsync<List<EstudianteModel>>("api/Estudiantes/estado?activo=true");
+        materias = await Http.GetFromJsonAsync<List<MateriaDtos>>("api/Materias/estado?estado=Activas");
     }
 
-    private async Task Guardar()
+    private async Task CargarDetalleMateria(ChangeEventArgs e)
     {
-        try
+        if (int.TryParse(e.Value?.ToString(), out int id))
         {
-            var response = await Http.PostAsJsonAsync("api/Calificaciones", nuevaCalificacion);
+            materiaSeleccionadaId = id;
 
-            if (response.IsSuccessStatusCode)
-            {
-                mensaje = "Calificación registrada correctamente.";
-                nuevaCalificacion = new(); // limpiar
-            }
-            else
-            {
-                var contenido = await response.Content.ReadAsStringAsync();
+            var resultado = await Http.GetFromJsonAsync<MateriaDetalleDto>($"api/Materias/{materiaSeleccionadaId}/detalles");
 
-                try
+            docenteAsignado = resultado.Docente;
+            docenteIdSeleccionado = resultado.DocenteId;
+            estudiantes = resultado.Estudiantes;
+
+            calificacionGrupal = new CalificacionGrupalDto
                 {
-                    var errorObj = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(contenido);
-                    mensaje = errorObj != null && errorObj.ContainsKey("mensaje")
-                        ? $"Error: {errorObj["mensaje"]}"
-                        : "Error desconocido al registrar la calificación.";
-                }
-                catch
-                {
-                    mensaje = $"Error inesperado: {contenido}";
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            mensaje = $"Error de conexión: {ex.Message}";
+                    MateriaId = materiaSeleccionadaId,
+                    DocenteId = docenteIdSeleccionado,
+                    Calificaciones = estudiantes.Select(e => new EstudianteNotaDto
+                    {
+                        EstudianteId = e.EstudianteId,
+                        Nota = 0
+                    }).ToList()
+                };
         }
     }
+
+    private async Task GuardarCalificaciones()
+    {
+        // Serializa el objeto y lo muestra en consola
+        var json = JsonSerializer.Serialize(calificacionGrupal);
+        await JS.InvokeVoidAsync("console.log", "Enviando datos:", json);
+
+        // Envía al backend
+        var response = await Http.PostAsJsonAsync("api/Calificaciones/grupal", calificacionGrupal);
+
+        if (response.IsSuccessStatusCode)
+        {
+            mensaje = "Calificaciones guardadas correctamente.";
+        }
+        else
+        {
+            var contenido = await response.Content.ReadAsStringAsync();
+            mensaje = $"Error al guardar: {contenido}";
+        }
+    }
+
+
 
 }

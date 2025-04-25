@@ -1,0 +1,244 @@
+﻿@page "/historial-docentes"
+@inject HttpClient Http
+@inject IJSRuntime JS
+@using NotaAsistencia.Client.Models
+@using NotaAsistencia.Client.Dtos
+@using System.Net.Http.Json
+
+<h3 class="text-primary text-center mb-4">Historial de Docentes</h3>
+
+<!-- Filtros -->
+<div class="row mb-3">
+    <div class="col-md-3">
+        <label>ID Docente</label>
+        <input class="form-control" @oninput="e => { filtroId = e.Value?.ToString(); AplicarFiltros(); }" />
+    </div>
+    <div class="col-md-3">
+        <label>Nombre</label>
+        <input class="form-control" @oninput="e => { filtroNombre = e.Value?.ToString(); AplicarFiltros(); }" />
+    </div>
+    <div class="col-md-3">
+        <label>Estado</label>
+        <select class="form-select" @bind="filtroEstado">
+            <option value="Todos">Todos</option>
+            <option value="Activo">Activo</option>
+            <option value="Inactivo">Inactivo</option>
+        </select>
+    </div>
+</div>
+
+<!-- Tabla de docentes -->
+@if (docentesFiltrados.Count == 0)
+{
+    <p class="text-muted">No se encontraron docentes.</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead class="table-dark">
+            <tr>
+                <th>Nombre</th>
+                <th>Correo</th>
+                <th>Teléfono</th>
+                <th>Dirección</th>
+                <th>F. Nac.</th>
+                <th>Edad</th>
+                <th>Contratación</th>
+                <th>Ingreso</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var docente in docentesFiltrados)
+            {
+                <tr>
+                    <td>@docente.NombreCompleto</td>
+                    <td>@docente.Correo</td>
+                    <td>@docente.Telefono</td>
+                    <td>@docente.Direccion</td>
+                    <td>@docente.FechaNacimiento.ToShortDateString()</td>
+                    <td>@docente.Edad</td>
+                    <td>@docente.FechaContratacion.ToShortDateString()</td>
+                    <td>@docente.FechaIngreso.ToShortDateString()</td>
+                    <td>@(docente.Estado ? "Activo" : "Inactivo")</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary me-1" @onclick="() => EditarDocente(docente)">Editar</button>
+                        <button class="btn btn-sm btn-danger" @onclick="() => MostrarConfirmacionEliminar(docente.DocenteId)">Eliminar</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<!-- Modal de edición -->
+@if (docenteEditando != null)
+{
+    <div class="card mt-4 p-3 shadow">
+        <h5>Editar Docente</h5>
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label>Nombre Completo</label>
+                <InputText class="form-control" @bind-Value="docenteEditando.NombreCompleto" />
+            </div>
+            <div class="col-md-6">
+                <label>Correo</label>
+                <InputText class="form-control" @bind-Value="docenteEditando.Correo" />
+            </div>
+        </div>
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label>Teléfono</label>
+                <InputText class="form-control" @bind-Value="docenteEditando.Telefono" />
+            </div>
+            <div class="col-md-6">
+                <label>Dirección</label>
+                <InputText class="form-control" @bind-Value="docenteEditando.Direccion" />
+            </div>
+        </div>
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label>Fecha de Nacimiento</label>
+                <InputDate class="form-control" @bind-Value="docenteEditando.FechaNacimiento" />
+            </div>
+            <div class="col-md-6">
+                <label>Fecha de Contratación</label>
+                <InputDate class="form-control" @bind-Value="docenteEditando.FechaContratacion" />
+            </div>
+        </div>
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label>Estado</label>
+                <select class="form-select" @bind="docenteEditando.Estado">
+                    <option value="@true">Activo</option>
+                    <option value="@false">Inactivo</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="mt-3 d-flex gap-2">
+            <button class="btn btn-success" @onclick="ActualizarDocente">Guardar cambios</button>
+            <button class="btn btn-secondary" @onclick="() => docenteEditando = null">Cancelar</button>
+        </div>
+    </div>
+}
+
+<!-- Modal éxito -->
+<div class="modal fade" id="modalExitoEdicion" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-success">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">✅ Cambios guardados</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">Los datos fueron actualizados correctamente.</div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-success" data-bs-dismiss="modal">Aceptar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal confirmación eliminación -->
+<div class="modal fade" id="modalConfirmacionEliminar" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-danger">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">❗ Confirmar eliminación</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">¿Estás seguro de que deseas desactivar este docente?</div>
+            <div class="modal-footer">
+                <button class="btn btn-danger" @onclick="ConfirmarEliminar">Sí, desactivar</button>
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<DocenteHistorialDtos> docentes = new();
+    private List<DocenteHistorialDtos> docentesFiltrados = new();
+
+    private string? filtroId = "";
+    private string? filtroNombre = "";
+    private string filtroEstadoInterno = "Activo";
+
+    private string filtroEstado
+    {
+        get => filtroEstadoInterno;
+        set
+        {
+            filtroEstadoInterno = value;
+            AplicarFiltros();
+        }
+    }
+
+    private DocenteEdit? docenteEditando;
+    private int idDocenteAEliminar;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarDocentes();
+    }
+
+    private async Task CargarDocentes()
+    {
+        docentes = await Http.GetFromJsonAsync<List<DocenteHistorialDtos>>("api/Docentes");
+        AplicarFiltros();
+    }
+
+    private void AplicarFiltros()
+    {
+        docentesFiltrados = docentes
+            .Where(d =>
+                (string.IsNullOrEmpty(filtroId) || d.DocenteId.ToString().Contains(filtroId)) &&
+                (string.IsNullOrEmpty(filtroNombre) || d.NombreCompleto.Contains(filtroNombre, StringComparison.OrdinalIgnoreCase)) &&
+                (filtroEstado == "Todos" || (filtroEstado == "Activo" && d.Estado) || (filtroEstado == "Inactivo" && !d.Estado))
+            )
+            .ToList();
+    }
+
+    private void EditarDocente(DocenteHistorialDtos docente)
+    {
+        docenteEditando = new DocenteEdit
+            {
+                DocenteId = docente.DocenteId,
+                NombreCompleto = docente.NombreCompleto,
+                Correo = docente.Correo,
+                Telefono = docente.Telefono,
+                Direccion = docente.Direccion,
+                FechaNacimiento = docente.FechaNacimiento,
+                FechaContratacion = docente.FechaContratacion,
+                Estado = docente.Estado
+            };
+    }
+
+
+    private async Task ActualizarDocente()
+    {
+        var response = await Http.PutAsJsonAsync($"api/Docentes/{docenteEditando!.DocenteId}", docenteEditando);
+        if (response.IsSuccessStatusCode)
+        {
+            await JS.InvokeVoidAsync("mostrarModal", "modalExitoEdicion");
+            docenteEditando = null;
+            await CargarDocentes();
+        }
+    }
+
+    private void MostrarConfirmacionEliminar(int id)
+    {
+        idDocenteAEliminar = id;
+        JS.InvokeVoidAsync("mostrarModal", "modalConfirmacionEliminar");
+    }
+
+    private async Task ConfirmarEliminar()
+    {
+        var response = await Http.DeleteAsync($"api/Docentes/{idDocenteAEliminar}");
+        if (response.IsSuccessStatusCode)
+        {
+            await CargarDocentes();
+        }
+    }
+}
