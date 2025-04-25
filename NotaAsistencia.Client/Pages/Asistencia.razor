@@ -22,13 +22,13 @@
     </div>
 </div>
 
-<h3 class="text-primary text-center mb-4">Registro de Asistencia por Materia</h3>
+<h3 class="text-primary text-center mb-4">Registro de Asistencia </h3>
 
 <div class="card p-4 shadow bg-light">
     <div class="row mb-3">
         <div class="col-md-6">
             <label class="form-label">Seleccione una Materia</label>
-            <select class="form-select" @bind-Value="materiaSeleccionadaId" @bind-Value:event="onchange">
+            <select class="form-select" @onchange="OnMateriaChanged">
                 <option value="">-- Seleccione --</option>
                 @foreach (var mat in materiasDisponibles)
                 {
@@ -52,6 +52,7 @@
             <thead class="table-dark">
                 <tr>
                     <th>Estudiante</th>
+                    <th>Matrícula</th>
                     <th>Estado</th>
                     <th>Observación</th>
                 </tr>
@@ -61,6 +62,7 @@
                 {
                     <tr>
                         <td>@item.NombreCompleto</td>
+                        <td>@item.Matricula</td>
                         <td>
                             <select class="form-select" @bind="item.Estado">
                                 <option value="Presente">Presente</option>
@@ -89,7 +91,7 @@
     private DateTime fechaAsistencia = DateTime.Today;
     private List<AsistenciaModel> nuevasAsistencias = new();
     private string? mensaje;
-    private string? materiaSeleccionadaId;
+    private int? materiaSeleccionadaId;
     private List<MateriaModel> materiasDisponibles = new();
 
     protected override async Task OnInitializedAsync()
@@ -99,25 +101,27 @@
 
     private async Task OnMateriaChanged(ChangeEventArgs e)
     {
-        materiaSeleccionadaId = e.Value?.ToString();
-        if (int.TryParse(materiaSeleccionadaId, out int idMateria))
+        if (int.TryParse(e.Value?.ToString(), out int idMateria))
         {
-            var estudiantes = await Http.GetFromJsonAsync<List<EstudianteModel>>($"api/Materias/{idMateria}/estudiantes");
-            nuevasAsistencias = estudiantes.Select(e => new AsistenciaModel
-            {
-                EstudianteId = e.EstudianteId,
-                NombreCompleto = e.NombreCompleto
-            }).ToList();
+            materiaSeleccionadaId = idMateria;
+            var estudiantes = await Http.GetFromJsonAsync<List<EstudianteAsignadoDto>>($"api/Materias/{idMateria}/estudiantes");
+            nuevasAsistencias = estudiantes.Select(est => new AsistenciaModel
+                {
+                    EstudianteId = est.EstudianteId,
+                    NombreCompleto = est.NombreCompleto,
+                    Matricula = est.Matricula
+                }).ToList();
         }
         else
         {
+            materiaSeleccionadaId = null;
             nuevasAsistencias.Clear();
         }
     }
 
     private async Task GuardarAsistencias()
     {
-        if (string.IsNullOrEmpty(materiaSeleccionadaId)) return;
+        if (!materiaSeleccionadaId.HasValue) return;
 
         var registros = nuevasAsistencias.Select(a => new
         {
@@ -125,7 +129,7 @@
             Fecha = fechaAsistencia,
             a.Estado,
             a.Observaciones,
-            MateriaId = int.Parse(materiaSeleccionadaId!)
+            MateriaId = materiaSeleccionadaId.Value
         });
 
         var response = await Http.PostAsJsonAsync("api/Asistencias", registros);

@@ -1,6 +1,7 @@
 ﻿@page "/listado-estudiantes"
 
 @using NotaAsistencia.Client.Models
+@using NotaAsistencia.Client.Dtos
 @inject HttpClient Http
 @inject IJSRuntime JS
 @using System.Net.Http.Json
@@ -57,10 +58,19 @@
 <h4 class="text-center mt-3 text-primary">Listado de Estudiantes</h4>
 
 <div class="mb-3">
-    <select class="form-select w-25" @onchange="FiltrarPorEstado">
-        <option value="todos" selected="@("todos" == filtroActivo)">Todos</option>
-        <option value="activos" selected="@("activos" == filtroActivo)">Activos</option>
-        <option value="inactivos" selected="@("inactivos" == filtroActivo)">Inactivos</option>
+    <select class="form-select w-25 mb-2" @bind="filtroActivo" disabled="@(filtroMateriaId != null)">
+        <option value="activos">Activos</option>
+        <option value="inactivos">Inactivos</option>
+        <option value="todos">Todos</option>
+    </select>
+
+
+    <select class="form-select w-25" @onchange="FiltrarPorMateria">
+        <option value="">-- Filtrar por Materia --</option>
+        @foreach (var materia in materiasDisponibles)
+        {
+            <option value="@materia.MateriaId">@materia.Nombre</option>
+        }
     </select>
 </div>
 
@@ -106,7 +116,10 @@ else
                     <td>@est.Telefono</td>
                     <td>@(est.Activo ? "Activo" : "Inactivo")</td>
                     <td>
-                        <button class="btn btn-warning btn-sm me-2" @onclick="() => CargarParaEditar(est)">Editar</button>
+                        @if (filtroMateriaId == null)
+                        {
+                            <button class="btn btn-warning btn-sm me-2" @onclick="() => CargarParaEditar(est)">Editar</button>
+                        }
                         <button class="btn btn-danger btn-sm" @onclick="() => MostrarConfirmacion(est.EstudianteId)">Eliminar</button>
                     </td>
                 </tr>
@@ -135,8 +148,10 @@ else
     }
 }
 
+
 @code {
     private List<EstudianteModel> estudiantes = new();
+    private List<MateriaDtos> materiasDisponibles = new();
     private string filtroActivo = "activos";
     private string filtroNombre = string.Empty;
     private string filtroMatricula = string.Empty;
@@ -146,36 +161,42 @@ else
     private int estudianteIdAEliminar;
     private bool modoEdicion = false;
     private string? mensaje;
+    private int? filtroMateriaId = null;
 
     protected override async Task OnInitializedAsync()
     {
+        materiasDisponibles = await Http.GetFromJsonAsync<List<MateriaDtos>>("api/Materias/activas");
         await CargarEstudiantes();
     }
 
-    private async Task FiltrarPorEstado(ChangeEventArgs e)
+    private async Task FiltrarPorMateria(ChangeEventArgs e)
     {
-        filtroActivo = e.Value?.ToString()?.ToLower() ?? "activos";
-        await CargarEstudiantes();
+        if (int.TryParse(e.Value?.ToString(), out int id))
+        {
+            filtroMateriaId = id;
+            var asignados = await Http.GetFromJsonAsync<List<EstudianteAsignadoDto>>($"api/Materias/{id}/estudiantes");
+            estudiantes = asignados.Select(e => new EstudianteModel
+                {
+                    EstudianteId = e.EstudianteId,
+                    NombreCompleto = e.NombreCompleto,
+                    Matricula = e.Matricula,
+                    Correo = e.Correo,
+                    Telefono = e.Telefono,
+                    Activo = true
+                }).ToList();
+        }
+        else
+        {
+            filtroMateriaId = null;
+            await CargarEstudiantes();
+        }
     }
 
     private async Task CargarEstudiantes()
     {
         try
         {
-            if (filtroActivo == "todos")
-            {
-                var activos = await Http.GetFromJsonAsync<List<EstudianteModel>>("api/Estudiantes/estado?activo=true");
-                var inactivos = await Http.GetFromJsonAsync<List<EstudianteModel>>("api/Estudiantes/estado?activo=false");
-                estudiantes = activos.Concat(inactivos).ToList();
-            }
-            else if (filtroActivo == "activos")
-            {
-                estudiantes = await Http.GetFromJsonAsync<List<EstudianteModel>>("api/Estudiantes/estado?activo=true");
-            }
-            else
-            {
-                estudiantes = await Http.GetFromJsonAsync<List<EstudianteModel>>("api/Estudiantes/estado?activo=false");
-            }
+            estudiantes = await Http.GetFromJsonAsync<List<EstudianteModel>>("api/Estudiantes/estado?activo=true");
         }
         catch (Exception ex)
         {

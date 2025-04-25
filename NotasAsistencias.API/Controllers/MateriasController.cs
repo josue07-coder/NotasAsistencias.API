@@ -96,6 +96,26 @@ namespace NotasAsistencias.API.Controllers
             return Ok(resultado);
         }
 
+        [HttpGet("{id}/estudiantes")]
+        public async Task<IActionResult> ObtenerEstudiantesAsignados(int id)
+        {
+            var estudiantes = await _context.MateriasEstudiantes
+                .Where(me => me.MateriaId == id)
+                .Include(me => me.Estudiante)
+                .Select(me => new EstudianteAsignadoDto
+                {
+                    EstudianteId = me.Estudiante.EstudianteId,
+                    NombreCompleto = me.Estudiante.NombreCompleto,
+                    Matricula = me.Estudiante.Matricula,
+                    Correo = me.Estudiante.Correo,
+                    Telefono = me.Estudiante.Telefono
+                })
+                .ToListAsync();
+
+            return Ok(estudiantes);
+        }
+
+
 
 
         // GET: api/Materias/estudiantes?activo=true
